@@ -16,9 +16,9 @@ so if it doesn't work try to install specifically: *rustc 1.11.0-nightly (12238b
 
 ## Setup
 
-A. Clone the repository: `git clone https://github.com/cygni/snakebot-clients.git`;
+A. Clone the repository: `git clone https://github.com/cygni/snakebot-client-rust.git`;
 
-B. Open: `<repo>/snakebot-rust`;
+B. Open: `<repo>/`;
 
 C. Run the snake: `cargo run`;
 

@@ -90,7 +90,7 @@ impl Map {
 mod test {
     use util::{ translate_coordinate };
     use maputil::{ Direction, Tile };
-    use messages::{ Map, SnakeInfo };
+    use structs::{ Map, SnakeInfo };
 
     const MAP_WIDTH: i32 = 3;
 

@@ -117,7 +117,7 @@ pub struct GameStarting {
 pub struct HeartBeatResponse {
     #[serde(rename="type")]
     pub type_: String,
-    pub receivingPlayerId: Option<String>
+    pub receivingPlayerId: String
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -138,7 +138,6 @@ pub struct TournamentEnded {
     pub gameResult: String,
     pub tournamentName: String,
     pub tournamentId: String,
-    pub gameTick: Option<i32>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -150,8 +149,7 @@ pub struct Map {
     pub worldTick: u32,
     pub snakeInfos: Vec<SnakeInfo>,
     pub foodPositions: Vec<i32>,
-    pub obstaclePositions: Vec<i32>,
-    pub receivingPlayerId: Option<String>,
+    pub obstaclePositions: Vec<i32>
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

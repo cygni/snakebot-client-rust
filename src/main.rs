@@ -142,7 +142,7 @@ impl ws::Handler for Client {
                 Ok(_) => debug!(target: LOG_TARGET, "Succeeded in routing message {}", text)
             }
         } else {
-            warn!(target: LOG_TARGET, "Unexpectedly received non-string message: {}", msg)
+            warn!(target: LOG_TARGET, "Unexpectedly received non-string message: {:?}", msg)
         }
 
         Ok(())

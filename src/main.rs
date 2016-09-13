@@ -107,6 +107,9 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
         Inbound::HeartBeatResponse(_) => {
             // do nothing
         },
+        Inbound::GameLinkEvent(msg) => {
+            info!(target: LOG_TARGET, "Watch game at {}", msg.url);
+        },
         Inbound::UnrecognizedMessage => {
 
         }
@@ -135,7 +138,7 @@ impl ws::Handler for Client {
         if let ws::Message::Text(text) = msg {
             let route_result = route_msg(self, &text);
             match route_result {
-                Err(e) => error!(target: LOG_TARGET, "Got error {} when routing message: {}", e, text),
+                Err(e) => error!(target: LOG_TARGET, "Got error \'{:?}\' when routing message: {}", e, text),
                 Ok(_) => debug!(target: LOG_TARGET, "Succeeded in routing message {}", text)
             }
         } else {

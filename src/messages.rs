@@ -18,6 +18,8 @@ pub const INVALID_PLAYER_NAME: &'static str =
     "se.cygni.snake.api.exception.InvalidPlayerName";
 pub const HEART_BEAT_RESPONSE: &'static str =
     "se.cygni.snake.api.request.HeartBeatResponse";
+pub const GAME_LINK_EVENT: &'static str =
+    "se.cygni.snake.api.event.GameLinkEvent";
 
 // Outbound
 const REGISTER_PLAYER_MESSAGE_TYPE: &'static str =
@@ -38,6 +40,7 @@ pub enum Inbound {
     PlayerRegistered(structs::PlayerRegistered),
     InvalidPlayerName(structs::InvalidPlayerName),
     HeartBeatResponse(structs::HeartBeatResponse),
+    GameLinkEvent(structs::GameLink),
     UnrecognizedMessage
 }
 
@@ -59,6 +62,8 @@ pub fn parse_inbound_msg(msg: &String) -> Result<Inbound, Error> {
             Inbound::InvalidPlayerName(try!(from_str(msg)))
         } else if msg.contains(HEART_BEAT_RESPONSE) {
             Inbound::HeartBeatResponse(try!(from_str(msg)))
+        } else if msg.contains(GAME_LINK_EVENT) {
+            Inbound::GameLinkEvent(try!(from_str(msg)))
         } else {
             Inbound::UnrecognizedMessage
         };
@@ -100,28 +105,21 @@ pub fn create_heart_beat_msg(id: String) -> Result<String, Error> {
 
 pub fn default_gamesettings() -> structs::GameSettings {
     structs::GameSettings {
-        width: String::from("MEDIUM"),
-        height: String::from("MEDIUM"),
         maxNoofPlayers: 5,
         startSnakeLength: 1,
         timeInMsPerTick: 250,
         obstaclesEnabled: true,
         foodEnabled: true,
-        edgeWrapsAround: false,
         headToTailConsumes: true,
         tailConsumeGrows: false,
         addFoodLikelihood: 15,
         removeFoodLikelihood: 5,
-        addObstacleLikelihood: 15,
-        removeObstacleLikelihood: 15,
         spontaneousGrowthEveryNWorldTick: 3,
         trainingGame: false,
         pointsPerLength: 1,
         pointsPerFood: 2,
         pointsPerCausedDeath: 5,
         pointsPerNibble: 10,
-        pointsLastSnakeLiving: 10,
         noofRoundsTailProtectedAfterNibble: 3,
-        pointsSuicide: -10,
     }
 }

@@ -2,29 +2,22 @@
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GameSettings {
-    pub width: String,
-    pub height: String,
     pub maxNoofPlayers: u32,
     pub startSnakeLength: u32,
     pub timeInMsPerTick: u32,
     pub obstaclesEnabled: bool,
     pub foodEnabled: bool,
-    pub edgeWrapsAround: bool,
     pub headToTailConsumes: bool,
     pub tailConsumeGrows: bool,
     pub addFoodLikelihood: u32,
     pub removeFoodLikelihood: u32,
-    pub addObstacleLikelihood: u32,
-    pub removeObstacleLikelihood: u32,
     pub spontaneousGrowthEveryNWorldTick: u32,
     pub trainingGame: bool,
     pub pointsPerLength: u32,
     pub pointsPerFood: u32,
     pub pointsPerCausedDeath: u32,
     pub pointsPerNibble: u32,
-    pub pointsLastSnakeLiving: u32,
     pub noofRoundsTailProtectedAfterNibble: u32,
-    pub pointsSuicide: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -125,6 +118,15 @@ pub struct HeartBeatResponse {
     #[serde(rename="type")]
     pub type_: String,
     pub receivingPlayerId: Option<String>
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct GameLink {
+    #[serde(rename="type")]
+    pub type_: String,
+    pub receivingPlayerId: String,
+    pub gameId: String,
+    pub url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

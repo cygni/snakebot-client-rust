@@ -128,15 +128,14 @@ mod test {
             worldTick: 0,
             snakeInfos: vec![get_snake_one(), get_snake_two()],
             foodPositions: vec![translate_coordinate((1,0),  MAP_WIDTH)],
-            obstaclePositions: vec![translate_coordinate((2,1), MAP_WIDTH)],
-            receivingPlayerId: Some(String::from("1"))
+            obstaclePositions: vec![translate_coordinate((2,1), MAP_WIDTH)]
         }
     }
 
     #[test]
     fn snake_can_be_found_by_id() {
         let map = get_test_map();
-        let id = map.receivingPlayerId.as_ref().unwrap();
+        let id = &get_snake_one().id;
         let s = map.get_snake_by_id(id);
         let found_id = &s.unwrap().id;
         assert_eq!(id, found_id);
@@ -184,7 +183,7 @@ mod test {
     #[test]
     fn can_snake_move_identifies_correctly() {
         let map = get_test_map();
-        let id = map.receivingPlayerId.as_ref().unwrap();
+        let id = &get_snake_one().id;
         let snake = map.get_snake_by_id(id).unwrap();
 
         assert_eq!(true, map.can_snake_move_in_direction(&snake, Direction::Up));

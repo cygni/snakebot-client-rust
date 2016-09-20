@@ -142,8 +142,6 @@ pub struct TournamentEnded {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Map {
-    #[serde(rename="type")]
-    pub type_: String,
     pub width: i32,
     pub height: i32,
     pub worldTick: u32,

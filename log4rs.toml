@@ -1,5 +1,4 @@
 [appenders.console]
-level = "info"
 kind = "console"
 
 [appenders.console.encoder]
@@ -8,25 +7,16 @@ pattern = "{d(%+)(local)} [{t}] {h({l})} {M}:{m}{n}"
 [appenders.client]
 kind = "file"
 path = "log/client.log"
-pattern = "{d} [{t}] {l} {M}:{m}{n}"
-level = "debug"
 
 [appenders.snake]
 kind = "file"
 path = "log/snake.log"
-pattern = "{d} [{t}] {l} {M}:{m}{n}"
-level = "debug"
 
 [root]
 level = "info"
 appenders = [ "console" ]
 
-[logger.client]
+[loggers.client]
 level = "debug"
 appenders = [ "client" ]
-additive = false
-
-[logger.snake]
-level = "debug"
-appenders = [ "snake", "console" ]
 additive = false

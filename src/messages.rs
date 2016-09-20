@@ -17,7 +17,7 @@ pub const PLAYER_REGISTERED: &'static str =
 pub const INVALID_PLAYER_NAME: &'static str =
     "se.cygni.snake.api.exception.InvalidPlayerName";
 pub const HEART_BEAT_RESPONSE: &'static str =
-    "se.cygni.snake.api.request.HeartBeatResponse";
+    "se.cygni.snake.api.response.HeartBeatResponse";
 pub const GAME_LINK_EVENT: &'static str =
     "se.cygni.snake.api.event.GameLinkEvent";
 

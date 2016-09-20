@@ -111,7 +111,7 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
             info!(target: LOG_TARGET, "Watch game at {}", msg.url);
         },
         Inbound::UnrecognizedMessage => {
-
+            error!(target: LOG_TARGET, "Received unrecognized message {:?}", str_msg);
         }
     };
 

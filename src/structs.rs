@@ -133,11 +133,19 @@ pub struct GameLink {
 pub struct TournamentEnded {
     #[serde(rename="type")]
     pub type_: String,
-    pub playerWinnerId: String,
-    pub gameId: String,
-    pub gameResult: String,
-    pub tournamentName: String,
+    pub receivingPlayerId: String,
     pub tournamentId: String,
+    pub tournamentName: String,
+    pub gameResult: Vec<GameResultSnake>,
+    pub gameId: String,
+    pub playerWinnerId: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GameResultSnake {
+    pub points: i32,
+    pub playerId: String,
+    pub name: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]

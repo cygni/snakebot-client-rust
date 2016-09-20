@@ -3,6 +3,7 @@ use util;
 
 #[derive(PartialEq, Debug)]
 pub enum Tile<'a> {
+    Wall,
     Food { coordinate: (i32,i32) },
     Obstacle { coordinate: (i32,i32) },
     Empty { coordinate: (i32,i32) },
@@ -39,6 +40,13 @@ pub fn direction_as_movement_delta(direction: &Direction) -> (i32,i32) {
 }
 
 impl Map {
+    pub fn inside_map(&self, coordinate: (i32, i32)) -> bool {
+        let (x,y) = coordinate;
+        let inside_x = x >= 0 && x < self.width;
+        let inside_y = y >= 0 && y < self.height;
+        inside_x && inside_y
+    }
+
     pub fn get_snake_by_id<'a>(&'a self, id: &String) -> Option<&'a SnakeInfo> {
         self.snakeInfos.iter().find(|s| &s.id == id)
     }
@@ -58,6 +66,8 @@ impl Map {
             } else {
                 Tile::SnakeBody { coordinate: coordinate, snake: s }
             }
+        } else if !self.inside_map(coordinate) {
+            Tile::Wall
         } else {
             Tile::Empty { coordinate: coordinate }
         }
@@ -189,5 +199,14 @@ mod test {
         assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Down));
         assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Left));
         assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Right));
+    }
+
+    #[test]
+    fn can_not_move_to_walls() {
+        let map = get_test_map();
+        let id = &get_snake_two().id;
+        let snake = map.get_snake_by_id(id).unwrap();
+
+        assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Down));
     }
 }

@@ -122,7 +122,6 @@ mod test {
     //2  2
     fn get_test_map() -> Map {
         Map {
-            type_: String::from("type"),
             width: MAP_WIDTH,
             height: MAP_WIDTH,
             worldTick: 0,

@@ -7,6 +7,8 @@ extern crate serde;
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate log;
 extern crate log4rs;
+extern crate target_info;
+extern crate rustc_version;
 
 mod structs;
 mod messages;
@@ -123,8 +125,16 @@ impl ws::Handler for Client {
     fn on_open(&mut self, _: ws::Handshake) -> ws::Result<()> {
         debug!(target: LOG_TARGET, "Connection to Websocket opened");
 
-        let parse_msg = messages::create_play_registration_msg(self.snake.get_name());
+        let client_info = messages::create_client_info_msg();
+        if let Ok(message) = client_info {
+            info!(target: LOG_TARGET, "Sending client info to server: {:?}", message);
+            try!(self.out.send(message));
+        } else {
+            error!(target: LOG_TARGET, "Unable to create client info message {:?}", client_info);
+            try!(self.out.close(ws::CloseCode::Error));
+        }
 
+        let parse_msg = messages::create_play_registration_msg(self.snake.get_name());
         if let Ok(response) = parse_msg {
             info!(target: LOG_TARGET, "Registering player with message: {:?}", response);
             self.out.send(response)

@@ -20,3 +20,8 @@ appenders = [ "console" ]
 level = "debug"
 appenders = [ "client" ]
 additive = false
+
+[loggers.snake]
+level = "debug"
+appenders = [ "snake" ]
+additive = false

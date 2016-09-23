@@ -29,6 +29,17 @@ pub struct PlayRegistration {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ClientInfo {
+    #[serde(rename="type")]
+    pub type_: String,
+    pub language: String,
+    pub languageVersion: String,
+    pub operatingSystem: String,
+    pub operatingSystemVersion: String,
+    pub clientVersion: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RegisterMove {
     #[serde(rename="type")]
     pub type_: String,

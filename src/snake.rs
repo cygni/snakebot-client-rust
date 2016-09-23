@@ -3,7 +3,7 @@ use maputil::{ Direction };
 use util::{ translate_positions };
 
 const LOG_TARGET: &'static str = "snake";
-pub const TRAINING_VENUE: &'static str = "tournament";
+pub const TRAINING_VENUE: &'static str = "training";
 
 pub struct Snake;
 

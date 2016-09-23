@@ -1,5 +1,7 @@
 use structs;
 use serde_json::{ from_str, to_string, Error };
+use target_info::Target;
+use rustc_version;
 
 // Inbound
 pub const GAME_ENDED: &'static str =
@@ -30,6 +32,8 @@ const REGISTER_MOVE: &'static str =
     "se.cygni.snake.api.request.RegisterMove";
 const HEART_BEAT_REQUEST: &'static str =
     "se.cygni.snake.api.request.HeartBeatRequest";
+const CLIENT_INFO: &'static str =
+    "se.cygni.snake.api.request.ClientInfo";
 
 pub enum Inbound {
     GameEnded(structs::GameEnded),
@@ -100,6 +104,17 @@ pub fn create_heart_beat_msg(id: String) -> Result<String, Error> {
     to_string(&structs::HeartBeatRequest {
         type_: String::from( HEART_BEAT_REQUEST ),
         receivingPlayerId: id
+    })
+}
+
+pub fn create_client_info_msg() -> Result<String, Error> {
+    to_string(&structs::ClientInfo {
+        type_: String::from(CLIENT_INFO),
+        language: String::from("rust"),
+        languageVersion: format!("{}", rustc_version::version()),
+        operatingSystem: String::from(Target::os()),
+        operatingSystemVersion: String::from(""),
+        clientVersion: String::from(option_env!("CARGO_PKG_VERSION").unwrap_or(""))
     })
 }
 

@@ -25,15 +25,33 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use messages::{ Inbound };
 use std::path::Path;
-use config::error::ConfigError;
 use config::reader::from_file;
+
+const LOG_TARGET: &'static str = "client";
+const HEART_BEAT_S: u64 = 20;
 
 const CONFIG_FILE: &'static str = "snake.conf";
 const DEFAULT_HOST: &'static str = "snake.cygni.se";
 const DEFAULT_PORT: i32 = 80;
+const DEFAULT_SNAKE_NAME: &'static str = "default-rust-snake-name";
+const DEFAULT_VENUE: &'static str = "training";
 
-const HEART_BEAT_S: u64 = 20;
-const LOG_TARGET: &'static str = "client";
+#[derive(Clone, Debug)]
+struct Config {
+    host: String,
+    port: i32,
+    snake_name: String,
+    venue: String
+}
+
+fn default_config() -> Config {
+    Config {
+        host: String::from(DEFAULT_HOST),
+        port: DEFAULT_PORT,
+        snake_name: String::from(DEFAULT_SNAKE_NAME),
+        venue: String::from(DEFAULT_VENUE)
+    }
+}
 
 quick_error! {
     #[derive(Debug)]
@@ -56,13 +74,10 @@ quick_error! {
     }
 }
 
-pub fn is_training_mode() -> bool{
-    snake::TRAINING_VENUE == snake::get_venue()
-}
-
 struct Client {
     out: Arc<ws::Sender>,
     snake: Snake,
+    config: Config,
     out_sender: mpsc::Sender<Arc<ws::Sender>>,
     id_sender: mpsc::Sender<String>
 }
@@ -74,7 +89,7 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
     match inbound_msg {
         Inbound::GameEnded(msg) => {
             snake.on_game_ended(&msg);
-            if is_training_mode() {
+            if client.config.venue == "training" {
                 try!(client.out.close(ws::CloseCode::Normal));
             }
         },
@@ -139,7 +154,7 @@ impl ws::Handler for Client {
             try!(self.out.close(ws::CloseCode::Error));
         }
 
-        let parse_msg = messages::create_play_registration_msg(self.snake.get_name());
+        let parse_msg = messages::create_play_registration_msg(self.config.snake_name.clone());
         if let Ok(response) = parse_msg {
             info!(target: LOG_TARGET, "Registering player with message: {:?}", response);
             self.out.send(response)
@@ -164,17 +179,39 @@ impl ws::Handler for Client {
     }
 }
 
-fn start_websocket_thread(host: String, port: i32,
-                          id_sender: mpsc::Sender<String>,
+fn read_conf_file() -> Config {
+    let config_path = Path::new(CONFIG_FILE);
+    info!(target: LOG_TARGET, "Reading config from file at {:?}", config_path.canonicalize());
+
+    let default_config = default_config();
+
+    match from_file(config_path) {
+        Ok(conf) => Config {
+            host: String::from(conf.lookup_str_or("host", DEFAULT_HOST)),
+            port: conf.lookup_integer32_or("port", DEFAULT_PORT),
+            snake_name: String::from(conf.lookup_str_or("venue", DEFAULT_SNAKE_NAME)),
+            venue: String::from(conf.lookup_str_or("venue", DEFAULT_VENUE))
+        },
+        Err(e) => {
+            error!(target: LOG_TARGET, "Unable to parse config file, got error {:?}", e);
+            default_config
+        }
+    }
+}
+
+fn start_websocket_thread(id_sender: mpsc::Sender<String>,
                           out_sender: mpsc::Sender<Arc<ws::Sender>>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let connection_url = format!("ws://{}:{}/{}", host, port, snake::get_venue());
+        let config = read_conf_file();
 
+        let connection_url = format!("ws://{}:{}/{}", config.host, config.port, config.venue);
         info!(target: LOG_TARGET, "Connecting to {:?}", connection_url);
+
         let result = ws::connect(connection_url, |out| {
             Client {
                 out: Arc::from(out),
                 snake: snake::Snake,
+                config: config.clone(),
                 out_sender: out_sender.clone(),
                 id_sender: id_sender.clone()
             }
@@ -237,34 +274,12 @@ fn start_heart_beat_thread(id_receiver: mpsc::Receiver<String>,
     })
 }
 
-fn read_conf_file() -> Result<(String, i32), ConfigError> {
-    let config_path = Path::new(CONFIG_FILE);
-    info!(target: LOG_TARGET, "Reading config from file at {:?}", config_path.canonicalize());
-
-    let conf = try!(from_file(config_path));
-    let host = String::from(conf.lookup_str_or("host", DEFAULT_HOST));
-    let port = conf.lookup_integer32_or("port", DEFAULT_PORT);
-    Ok((host, port))
-}
-
 fn start_client() {
     let (id_sender,id_receiver) = mpsc::channel();
     let (out_sender,out_receiver) = mpsc::channel();
     let (done_sender,done_receiver) = mpsc::channel();
 
-    let (host, port) =
-        match read_conf_file() {
-            Ok(values) => values,
-            Err(e) => {
-                error!(target: LOG_TARGET, "Unable to parse config file, got error {:?}", e);
-                error!(target: LOG_TARGET, "Using default host={} and port={}", DEFAULT_HOST, DEFAULT_PORT);
-                (String::from(DEFAULT_HOST),
-                 DEFAULT_PORT)
-            }
-        };
-
-
-    let websocket = start_websocket_thread(host, port, id_sender, out_sender);
+    let websocket = start_websocket_thread(id_sender, out_sender);
     let heartbeat = start_heart_beat_thread(id_receiver, out_receiver, done_receiver);
 
     let websocket_res = websocket.join();

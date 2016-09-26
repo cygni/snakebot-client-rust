@@ -3,19 +3,10 @@ use maputil::{ Direction };
 use util::{ translate_positions };
 
 const LOG_TARGET: &'static str = "snake";
-pub const TRAINING_VENUE: &'static str = "training";
 
 pub struct Snake;
 
-pub fn get_venue() -> String {
-    String::from(TRAINING_VENUE)
-}
-
 impl Snake {
-    pub fn get_name(&self) -> String {
-        String::from("rusty-snake")
-    }
-
     pub fn get_next_move(&self, msg: &MapUpdate) -> Direction {
         debug!(target: LOG_TARGET, "Game map updated, tick: {}", msg.gameTick);
 

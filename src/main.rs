@@ -9,6 +9,7 @@ extern crate serde;
 extern crate log4rs;
 extern crate target_info;
 extern crate rustc_version;
+extern crate config;
 
 mod structs;
 mod messages;
@@ -23,9 +24,13 @@ use std::time::Duration;
 use std::sync::mpsc;
 use std::sync::Arc;
 use messages::{ Inbound };
+use std::path::Path;
+use config::error::ConfigError;
+use config::reader::from_file;
 
-const HOST: &'static str = "snake.cygni.se";
-const PORT: i32 = 80;
+const CONFIG_FILE: &'static str = "snake.conf";
+const DEFAULT_HOST: &'static str = "snake.cygni.se";
+const DEFAULT_PORT: i32 = 80;
 
 const HEART_BEAT_S: u64 = 20;
 const LOG_TARGET: &'static str = "client";
@@ -159,11 +164,11 @@ impl ws::Handler for Client {
     }
 }
 
-fn start_websocket_thread(id_sender: mpsc::Sender<String>,
+fn start_websocket_thread(host: String, port: i32,
+                          id_sender: mpsc::Sender<String>,
                           out_sender: mpsc::Sender<Arc<ws::Sender>>) -> thread::JoinHandle<()> {
-
     thread::spawn(move || {
-        let connection_url = format!("ws://{}:{}/{}", HOST, PORT, snake::get_venue());
+        let connection_url = format!("ws://{}:{}/{}", host, port, snake::get_venue());
 
         info!(target: LOG_TARGET, "Connecting to {:?}", connection_url);
         let result = ws::connect(connection_url, |out| {
@@ -232,12 +237,34 @@ fn start_heart_beat_thread(id_receiver: mpsc::Receiver<String>,
     })
 }
 
+fn read_conf_file() -> Result<(String, i32), ConfigError> {
+    let config_path = Path::new(CONFIG_FILE);
+    info!(target: LOG_TARGET, "Reading config from file at {:?}", config_path.canonicalize());
+
+    let conf = try!(from_file(config_path));
+    let host = String::from(conf.lookup_str_or("host", DEFAULT_HOST));
+    let port = conf.lookup_integer32_or("port", DEFAULT_PORT);
+    Ok((host, port))
+}
+
 fn start_client() {
     let (id_sender,id_receiver) = mpsc::channel();
     let (out_sender,out_receiver) = mpsc::channel();
     let (done_sender,done_receiver) = mpsc::channel();
 
-    let websocket = start_websocket_thread(id_sender, out_sender);
+    let (host, port) =
+        match read_conf_file() {
+            Ok(values) => values,
+            Err(e) => {
+                error!(target: LOG_TARGET, "Unable to parse config file, got error {:?}", e);
+                error!(target: LOG_TARGET, "Using default host={} and port={}", DEFAULT_HOST, DEFAULT_PORT);
+                (String::from(DEFAULT_HOST),
+                 DEFAULT_PORT)
+            }
+        };
+
+
+    let websocket = start_websocket_thread(host, port, id_sender, out_sender);
     let heartbeat = start_heart_beat_thread(id_receiver, out_receiver, done_receiver);
 
     let websocket_res = websocket.join();

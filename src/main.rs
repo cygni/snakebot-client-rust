@@ -1,38 +1,37 @@
-#![feature(custom_derive, plugin)]
-#![plugin(serde_macros)]
-
-extern crate serde_json;
-extern crate ws;
-extern crate serde;
-#[macro_use] extern crate quick_error;
 #[macro_use] extern crate log;
-extern crate log4rs;
-extern crate target_info;
-extern crate rustc_version;
+#[macro_use] extern crate quick_error;
+#[macro_use] extern crate serde_derive;
+extern crate clap;
 extern crate config;
+extern crate log4rs;
+extern crate rustc_version;
+extern crate serde;
+extern crate serde_json;
+extern crate target_info;
+extern crate ws;
 
-mod structs;
+mod maputil;
 mod messages;
 mod snake;
+mod structs;
 mod util;
-mod maputil;
 
+use clap::{ Arg, App };
+use messages::{ Inbound };
 use snake::{ Snake };
+use std::path::Path;
 use std::string::{ String };
+use std::sync::Arc;
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc;
-use std::sync::Arc;
-use messages::{ Inbound };
-use std::path::Path;
-use config::reader::from_file;
 
 const LOG_TARGET: &'static str = "client";
 const HEART_BEAT_S: u64 = 20;
 
 const CONFIG_FILE: &'static str = "snake.conf";
 const DEFAULT_HOST: &'static str = "snake.cygni.se";
-const DEFAULT_PORT: i32 = 80;
+const DEFAULT_PORT: &'static str = "80";
 const DEFAULT_SNAKE_NAME: &'static str = "default-rust-snake-name";
 const DEFAULT_VENUE: &'static str = "training";
 
@@ -42,15 +41,6 @@ struct Config {
     port: i32,
     snake_name: String,
     venue: String
-}
-
-fn default_config() -> Config {
-    Config {
-        host: String::from(DEFAULT_HOST),
-        port: DEFAULT_PORT,
-        snake_name: String::from(DEFAULT_SNAKE_NAME),
-        venue: String::from(DEFAULT_VENUE)
-    }
 }
 
 quick_error! {
@@ -182,20 +172,44 @@ impl ws::Handler for Client {
 fn read_conf_file() -> Config {
     let config_path = Path::new(CONFIG_FILE);
     info!(target: LOG_TARGET, "Reading config from file at {:?}", config_path.canonicalize());
+    let matches = App::new("Rust snake client")
+        .version("1.1.0")
+        .author("Martin Barksten <martin.barksten@cygni.se>")
+        .about("A snake client in the least friendly language.")
+        .arg(Arg::with_name("host")
+             .short("h")
+             .long("host")
+             .help("The host to connect to")
+             .takes_value(true)
+             .default_value(DEFAULT_HOST))
+        .arg(Arg::with_name("port")
+             .short("p")
+             .long("port")
+             .help("The port to connect to")
+             .takes_value(true)
+             .default_value(DEFAULT_PORT))
+        .arg(Arg::with_name("venue")
+             .short("v")
+             .long("venue")
+             .help("The venue (tournament or training)")
+             .takes_value(true)
+             .default_value(DEFAULT_VENUE)
+             .possible_values(&["tournament", "training"]))
+        .arg(Arg::with_name("snake-name")
+             .short("n")
+             .long("snake-name")
+             .help("The name of the snake")
+             .takes_value(true)
+             .default_value(DEFAULT_SNAKE_NAME))
+        .get_matches();
 
-    let default_config = default_config();
+    let port = matches.value_of("port").unwrap_or(DEFAULT_PORT).parse::<i32>().unwrap();
 
-    match from_file(config_path) {
-        Ok(conf) => Config {
-            host: String::from(conf.lookup_str_or("host", DEFAULT_HOST)),
-            port: conf.lookup_integer32_or("port", DEFAULT_PORT),
-            snake_name: String::from(conf.lookup_str_or("venue", DEFAULT_SNAKE_NAME)),
-            venue: String::from(conf.lookup_str_or("venue", DEFAULT_VENUE))
-        },
-        Err(e) => {
-            error!(target: LOG_TARGET, "Unable to parse config file, got error {:?}", e);
-            default_config
-        }
+    Config {
+        host: String::from(matches.value_of("host").unwrap_or(DEFAULT_HOST)),
+        port: port,
+        snake_name: String::from(matches.value_of("snake-name").unwrap_or(DEFAULT_SNAKE_NAME)),
+        venue: String::from(matches.value_of("venue").unwrap_or(DEFAULT_VENUE))
     }
 }
 

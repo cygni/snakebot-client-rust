@@ -111,7 +111,7 @@ pub fn create_client_info_msg() -> Result<String, Error> {
     to_string(&structs::ClientInfo {
         type_: String::from(CLIENT_INFO),
         language: String::from("rust"),
-        languageVersion: format!("{}", rustc_version::version()),
+        languageVersion: format!("{}", rustc_version::version().unwrap()),
         operatingSystem: String::from(Target::os()),
         operatingSystemVersion: String::from(""),
         clientVersion: String::from(option_env!("CARGO_PKG_VERSION").unwrap_or(""))

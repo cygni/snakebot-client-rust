@@ -9,7 +9,7 @@ Then here is the ultimate snake client for you, written for the beautiful langua
 
 ## Requirements
 
-* Rust nightly (use [rustup](https://github.com/rust-lang-nursery/rustup.rs))
+* Rust (which should be installed via [rustup](https://github.com/rust-lang-nursery/rustup.rs))
 * Snake server (local or remote)
 
 ## Setup
@@ -18,8 +18,8 @@ A. Clone the repository: `git clone https://github.com/cygni/snakebot-client-rus
 
 B. Open the repo: `cd snakebot-client-rust`;
 
-C. Default to nightly rust for the repo: `rustup override set nightly-2016-08-27`;
+C. Build the snake: `cargo build`;
 
-D. Run the snake: `cargo run`;
+D. Run the snake: `cargo run` or `./target/debug/snakebot_rust` (see `./target/debug/snakebot_rust --help` for command line options);
 
 E. Improve the snake: edit `src/snake.rs`, and more specifically `get_next_move`.

@@ -1,12 +1,13 @@
+#![allow(non_snake_case)]
 #[macro_use] extern crate log;
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_json;
 extern crate clap;
 extern crate config;
 extern crate log4rs;
 extern crate rustc_version;
 extern crate serde;
-extern crate serde_json;
 extern crate target_info;
 extern crate ws;
 
@@ -17,7 +18,7 @@ mod structs;
 mod util;
 
 use clap::{ Arg, App };
-use messages::{ Inbound };
+use messages::{ Inbound, Outbound, handle_inbound_msg, render_outbound_message };
 use snake::{ Snake };
 use std::path::Path;
 use std::string::{ String };
@@ -74,9 +75,8 @@ struct Client {
 
 fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
     let snake = &mut client.snake;
-    let inbound_msg = try!(messages::parse_inbound_msg(str_msg));
 
-    match inbound_msg {
+    match try!(handle_inbound_msg(str_msg)) {
         Inbound::GameEnded(msg) => {
             snake.on_game_ended(&msg);
             if client.config.venue == "training" {
@@ -88,10 +88,13 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
             try!(client.out.close(ws::CloseCode::Normal));
         },
         Inbound::MapUpdate(msg) => {
-            let direction = maputil::direction_as_string(&snake.get_next_move(&msg));
-            let response = try!(messages::create_register_move_msg(direction, msg));
-            debug!(target: LOG_TARGET, "Responding with RegisterMove {:?}", response);
-            try!(client.out.send(response));
+            let m = render_outbound_message(Outbound::RegisterMove {
+                    direction: snake.get_next_move(&msg),
+                    gameTick: msg.gameTick,
+                    receivingPlayerId: msg.receivingPlayerId,
+                    gameId: msg.gameId });
+            debug!(target: LOG_TARGET, "Responding with RegisterMove {:?}", m);
+            try!(client.out.send(m));
         },
         Inbound::SnakeDead(msg) => {
             snake.on_snake_dead(&msg);
@@ -104,9 +107,9 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
             snake.on_player_registered(&msg);
 
             if msg.gameMode == "TRAINING" {
-                let response = try!(messages::create_start_game_msg());
-                debug!(target: LOG_TARGET, "Requesting a game start {:?}", response);
-                try!(client.out.send(response));
+                let m = render_outbound_message(Outbound::StartGame);
+                debug!(target: LOG_TARGET, "Requesting a game start {:?}", m);
+                try!(client.out.send(m));
             };
 
             info!(target: LOG_TARGET, "Starting heart beat");
@@ -119,8 +122,11 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
         Inbound::HeartBeatResponse(_) => {
             // do nothing
         },
-        Inbound::GameLinkEvent(msg) => {
+        Inbound::GameLink(msg) => {
             info!(target: LOG_TARGET, "Watch game at {}", msg.url);
+        },
+        Inbound::GameResult(msg) => {
+            info!(target: LOG_TARGET, "We got some game result! {:?}", msg);
         },
         Inbound::UnrecognizedMessage => {
             error!(target: LOG_TARGET, "Received unrecognized message {:?}", str_msg);
@@ -130,28 +136,17 @@ fn route_msg(client: &mut Client, str_msg: &String) -> Result<(), ClientError> {
     Ok(())
 }
 
-
 impl ws::Handler for Client {
     fn on_open(&mut self, _: ws::Handshake) -> ws::Result<()> {
         debug!(target: LOG_TARGET, "Connection to Websocket opened");
-
-        let client_info = messages::create_client_info_msg();
-        if let Ok(message) = client_info {
-            info!(target: LOG_TARGET, "Sending client info to server: {:?}", message);
-            try!(self.out.send(message));
-        } else {
-            error!(target: LOG_TARGET, "Unable to create client info message {:?}", client_info);
-            try!(self.out.close(ws::CloseCode::Error));
-        }
-
-        let parse_msg = messages::create_play_registration_msg(self.config.snake_name.clone());
-        if let Ok(response) = parse_msg {
-            info!(target: LOG_TARGET, "Registering player with message: {:?}", response);
-            self.out.send(response)
-        } else {
-            error!(target: LOG_TARGET, "Unable to create play registration message {:?}", parse_msg);
-            self.out.close(ws::CloseCode::Error)
-        }
+        let m = render_outbound_message(Outbound::ClientInfo);
+        info!(target: LOG_TARGET, "Sending client info to server: {:?}", m);
+        try!(self.out.send(m));
+        let msg = render_outbound_message(Outbound::RegisterPlayer {
+                playerName: self.config.snake_name.clone(),
+                gameSettings: Default::default() });
+        info!(target: LOG_TARGET, "Registering player with message: {:?}", msg);
+        self.out.send(msg)
     }
 
     fn on_message(&mut self, msg: ws::Message) -> ws::Result<()> {
@@ -251,16 +246,9 @@ fn do_heart_beat(id: String, out: Arc<ws::Sender>, done_receiver: mpsc::Receiver
         }
 
         debug!(target: LOG_TARGET, "Sending heartbeat request");
-
-        let id = id.clone();
-        let parsed_msg = messages::create_heart_beat_msg(id);
-        if let Ok(heart_beat) = parsed_msg {
-            let send_result = out.send(heart_beat);
-            if let Err(e) = send_result {
-                error!(target: LOG_TARGET, "Unable to send heartbeat, got error {:?}", e);
-            }
-        } else {
-            error!(target: LOG_TARGET, "Unable to parse heart beat message {:?}", parsed_msg);
+        let send_result = out.send(render_outbound_message(Outbound::HeartBeat { receivingPlayerId: id.clone() }));
+        if let Err(e) = send_result {
+            error!(target: LOG_TARGET, "Unable to send heartbeat, got error {:?}", e);
         }
     }
 }

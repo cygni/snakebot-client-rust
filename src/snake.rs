@@ -1,4 +1,4 @@
-use structs::{ MapUpdate, GameEnded, TournamentEnded, SnakeDead, GameStarting, PlayerRegistered, InvalidPlayerName};
+use structs::{ MapUpdate, GameEnded, TournamentEnded, SnakeDead, GameStarting, PlayerRegistered, InvalidPlayerName };
 use maputil::{ Direction };
 use util::{ translate_positions };
 
@@ -10,28 +10,19 @@ impl Snake {
     pub fn get_next_move(&self, msg: &MapUpdate) -> Direction {
         debug!(target: LOG_TARGET, "Game map updated, tick: {}", msg.gameTick);
 
-        let ref map = msg.map;
-        let player_id = &msg.receivingPlayerId;
-        let snake = map.get_snake_by_id(player_id).unwrap();
+        let map = &msg.map;
+        let snake = map.get_snake_by_id(&msg.receivingPlayerId).unwrap();
 
         debug!(target: LOG_TARGET, "Food can be found at {:?}", translate_positions(&map.foodPositions, map.width));
         debug!(target: LOG_TARGET, "My snake positions are {:?}", translate_positions(&snake.positions, map.width));
-
-        let direction = if map.can_snake_move_in_direction(snake, Direction::Down) {
-            Direction::Down
-        } else if map.can_snake_move_in_direction(snake, Direction::Left) {
-            Direction::Left
-        } else if map.can_snake_move_in_direction(snake, Direction::Right) {
-            Direction::Right
-        } else if map.can_snake_move_in_direction(snake, Direction::Up) {
-            Direction::Up
-        } else {
-            // this is bad
-            Direction::Down
-        };
-
-        debug!(target: LOG_TARGET, "Snake will move in direction {:?}", direction);
-        direction
+        for &d in [Direction::Down, Direction::Left, Direction::Right, Direction::Up].into_iter() {
+            if map.can_snake_move_in_direction(snake, d) {
+                debug!(target: LOG_TARGET, "Snake will move in direction {:?}", d);
+                return d;
+            }
+        }
+        debug!(target: LOG_TARGET, "Snake cannot but will move down.");
+        return Direction::Down;
     }
 
     pub fn on_game_ended(&self, msg: &GameEnded) {
@@ -47,14 +38,14 @@ impl Snake {
     }
 
     pub fn on_game_starting(&self, _: &GameStarting) {
-
+        debug!(target: LOG_TARGET, "All snakes are ready to rock. Game is starting.");
     }
 
     pub fn on_player_registered(&self, _: &PlayerRegistered) {
-
+        debug!(target: LOG_TARGET, "Player has been registered.");
     }
 
     pub fn on_invalid_playername(&self, _: &InvalidPlayerName) {
-
+        debug!(target: LOG_TARGET, "Player name invalid.");
     }
 }

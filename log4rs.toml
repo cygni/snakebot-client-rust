@@ -23,5 +23,5 @@ additive = false
 
 [loggers.snake]
 level = "debug"
-appenders = [ "snake" ]
+appenders = [ "console" ]
 additive = false

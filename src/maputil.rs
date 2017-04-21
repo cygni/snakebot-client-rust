@@ -1,5 +1,6 @@
 use structs::{ Map, SnakeInfo };
 use util;
+use serde::ser::{ Serialize, Serializer };
 
 #[derive(PartialEq, Debug)]
 pub enum Tile<'a> {
@@ -11,7 +12,7 @@ pub enum Tile<'a> {
     SnakeBody { coordinate: (i32,i32), snake: &'a SnakeInfo }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Direction {
     Down,
     Up,
@@ -19,23 +20,27 @@ pub enum Direction {
     Right
 }
 
-pub fn direction_as_string(direction: &Direction) -> String {
-    let s = match direction {
-        &Direction::Down => "DOWN",
-        &Direction::Up => "UP",
-        &Direction::Left => "LEFT",
-        &Direction::Right => "RIGHT"
-    };
-
-    String::from(s)
+impl Serialize for Direction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        serializer.serialize_str(match *self {
+            Direction::Down  => "DOWN",
+            Direction::Up    => "UP",
+            Direction::Left  => "LEFT",
+            Direction::Right => "RIGHT",
+        })
+    }
 }
 
-pub fn direction_as_movement_delta(direction: &Direction) -> (i32,i32) {
-    match direction {
-        &Direction::Down => (0, 1),
-        &Direction::Up => (0, -1),
-        &Direction::Left => (-1, 0),
-        &Direction::Right => (1, 0)
+impl Direction {
+    pub fn as_movement_delta(&self) -> (i32,i32) {
+        match *self {
+            Direction::Down  => ( 0,  1),
+            Direction::Up    => ( 0, -1),
+            Direction::Left  => (-1,  0),
+            Direction::Right => ( 1,  0)
+        }
     }
 }
 
@@ -83,7 +88,7 @@ impl Map {
     }
 
     pub fn can_snake_move_in_direction(&self, snake: &SnakeInfo, direction: Direction) -> bool {
-        let (xd,yd) = direction_as_movement_delta(&direction);
+        let (xd,yd) = direction.as_movement_delta();
         let (x,y) = util::translate_position(snake.positions[0], self.width);
 
         self.is_tile_available_for_movement((x+xd,y+yd))

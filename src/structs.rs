@@ -20,52 +20,31 @@ pub struct GameSettings {
     pub noofRoundsTailProtectedAfterNibble: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PlayRegistration {
-    #[serde(rename="type")]
-    pub type_: String,
-    pub playerName: String,
-    pub gameSettings: GameSettings,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ClientInfo {
-    #[serde(rename="type")]
-    pub type_: String,
-    pub language: String,
-    pub languageVersion: String,
-    pub operatingSystem: String,
-    pub operatingSystemVersion: String,
-    pub clientVersion: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RegisterMove {
-    #[serde(rename="type")]
-    pub type_: String,
-    pub direction: String,
-    pub gameTick: u32,
-    pub receivingPlayerId: String,
-    pub gameId: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct StartGame {
-    #[serde(rename="type")]
-    pub type_: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HeartBeatRequest {
-    #[serde(rename="type")]
-    pub type_: String,
-    pub receivingPlayerId: String
+impl Default for GameSettings {
+    fn default() -> GameSettings {
+        GameSettings {
+            maxNoofPlayers: 5,
+            startSnakeLength: 1,
+            timeInMsPerTick: 250,
+            obstaclesEnabled: true,
+            foodEnabled: true,
+            headToTailConsumes: true,
+            tailConsumeGrows: false,
+            addFoodLikelihood: 15,
+            removeFoodLikelihood: 5,
+            spontaneousGrowthEveryNWorldTick: 3,
+            trainingGame: false,
+            pointsPerLength: 1,
+            pointsPerFood: 2,
+            pointsPerCausedDeath: 5,
+            pointsPerNibble: 10,
+            noofRoundsTailProtectedAfterNibble: 3,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerRegistered {
-    #[serde(rename="type")]
-    pub type_: String,
     pub gameId: String,
     pub gameMode: String,
     pub receivingPlayerId: String,
@@ -75,8 +54,6 @@ pub struct PlayerRegistered {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MapUpdate {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String,
     pub gameId: String,
     pub gameTick: u32,
@@ -85,15 +62,11 @@ pub struct MapUpdate {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InvalidPlayerName {
-    #[serde(rename="type")]
-    pub type_: String,
     pub reasonCode: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GameEnded {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String,
     pub playerWinnerId: String,
     pub gameId: String,
@@ -103,8 +76,6 @@ pub struct GameEnded {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SnakeDead {
-    #[serde(rename="type")]
-    pub type_: String,
     pub playerId: String,
     pub x: u32,
     pub y: u32,
@@ -115,8 +86,6 @@ pub struct SnakeDead {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GameStarting {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String,
     pub gameId: String,
     pub noofPlayers: u32,
@@ -126,15 +95,11 @@ pub struct GameStarting {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HeartBeatResponse {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct GameLink {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String,
     pub gameId: String,
     pub url: String,
@@ -142,18 +107,16 @@ pub struct GameLink {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TournamentEnded {
-    #[serde(rename="type")]
-    pub type_: String,
     pub receivingPlayerId: String,
     pub tournamentId: String,
     pub tournamentName: String,
-    pub gameResult: Vec<GameResultSnake>,
+    pub gameResult: Vec<GameResult>,
     pub gameId: String,
     pub playerWinnerId: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GameResultSnake {
+pub struct GameResult {
     pub points: i32,
     pub playerId: String,
     pub name: String

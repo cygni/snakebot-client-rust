@@ -44,10 +44,10 @@ pub fn get_euclidian_distance(start: (i32,i32), goal: (i32,i32)) -> f64 {
 }
 
 #[allow(dead_code)]
-pub fn is_within_square(coord: (i32,i32), ne_coord: (i32,i32), sw_coord: (i32,i32)) -> bool {
+pub fn is_within_square(coord: (i32,i32), nw_coord: (i32,i32), se_coord: (i32,i32)) -> bool {
     let (x,y) = coord;
-    let (ne_x, ne_y) = ne_coord;
-    let (sw_x, sw_y) = sw_coord;
+    let (nw_x, nw_y) = nw_coord;
+    let (se_x, se_y) = se_coord;
 
-    x < ne_x || x > sw_x || y < sw_y || y > ne_y
+    x >= nw_x && x <= se_x && y >= nw_y && y <= se_y
 }

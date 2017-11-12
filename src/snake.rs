@@ -21,6 +21,7 @@ impl Snake {
                 return d;
             }
         }
+
         debug!(target: LOG_TARGET, "Snake cannot but will move down.");
         return Direction::Down;
     }

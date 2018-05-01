@@ -1,10 +1,10 @@
-use structs;
-use target_info::Target;
-use rustc_version::{version};
-use maputil::{Direction};
-use structs::{GameSettings};
-use serde_json::{ from_str, from_value, Error, Map, Value };
+use maputil::Direction;
+use rustc_version::version;
+use serde_json::{from_str, from_value, Error, Map, Value};
 use std::iter::FromIterator;
+use structs;
+use structs::GameSettings;
+use target_info::Target;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Inbound {
@@ -18,7 +18,7 @@ pub enum Inbound {
     HeartBeatResponse(structs::HeartBeatResponse),
     GameLink(structs::GameLink),
     GameResult(structs::GameResult),
-    UnrecognizedMessage
+    UnrecognizedMessage,
 }
 
 /// We turn the string into `Inbound` by converting the string into a
@@ -34,29 +34,53 @@ pub enum Inbound {
 /// Like this: {GameResult: <Some JSON data>}
 ///
 pub fn handle_inbound_msg(s: &str) -> Result<Inbound, Error> {
-    let mut json_value = from_str::<Value>(s)
-        .expect(&format!("Couldn't parse string into JSON: {:?}", s));
-    let mut map = json_value.as_object_mut()
+    let mut json_value =
+        from_str::<Value>(s).expect(&format!("Couldn't parse string into JSON: {:?}", s));
+    let mut map = json_value
+        .as_object_mut()
         .expect(&format!("Couldn't parse string into JSON object: {:?}", s));
-    let type_value = map.remove("type").expect(&format!("Couldn't find key `type` in: {:?}", &map));
-    let type_str = type_value.as_str().expect(&format!("Couldn't turn JSON Value into string: {:?}", &map));
-    let typ = type_str.rsplit('.').next()
-        .expect(&format!("The type parser needs a dot-separated string, this string lacks dots: {:?}", type_str))
+    let type_value = map.remove("type")
+        .expect(&format!("Couldn't find key `type` in: {:?}", &map));
+    let type_str = type_value
+        .as_str()
+        .expect(&format!("Couldn't turn JSON Value into string: {:?}", &map));
+    let typ = type_str
+        .rsplit('.')
+        .next()
+        .expect(&format!(
+            "The type parser needs a dot-separated string, this string lacks dots: {:?}",
+            type_str
+        ))
         .replace("Event", "");
-    from_value(Value::Object(Map::from_iter(vec![(typ, Value::Object(map.clone()))])))
+    from_value(Value::Object(Map::from_iter(vec![
+        (typ, Value::Object(map.clone())),
+    ])))
 }
 
 pub enum Outbound {
-    RegisterPlayer{playerName: String, gameSettings: GameSettings},
+    RegisterPlayer {
+        playerName: String,
+        gameSettings: GameSettings,
+    },
     StartGame,
-    RegisterMove{direction: Direction, gameTick: u32, receivingPlayerId: String, gameId: String},
-    HeartBeat{receivingPlayerId: String},
+    RegisterMove {
+        direction: Direction,
+        gameTick: u32,
+        receivingPlayerId: String,
+        gameId: String,
+    },
+    HeartBeat {
+        receivingPlayerId: String,
+    },
     ClientInfo,
 }
 
 pub fn render_outbound_message(msg: Outbound) -> String {
     (match msg {
-        Outbound::RegisterPlayer {playerName, gameSettings} => json!({
+        Outbound::RegisterPlayer {
+            playerName,
+            gameSettings,
+        } => json!({
             "type": "se.cygni.snake.api.request.RegisterPlayer",
             "playerName": playerName,
             "gameSettings": gameSettings
@@ -64,14 +88,19 @@ pub fn render_outbound_message(msg: Outbound) -> String {
         Outbound::StartGame => json!({
             "type": "se.cygni.snake.api.request.StartGame",
         }),
-        Outbound::RegisterMove {direction, gameTick, receivingPlayerId, gameId} => json!({
+        Outbound::RegisterMove {
+            direction,
+            gameTick,
+            receivingPlayerId,
+            gameId,
+        } => json!({
             "type": "se.cygni.snake.api.request.RegisterMove",
             "direction": direction,
             "gameTick": gameTick,
             "receivingPlayerId": receivingPlayerId,
             "gameId": gameId,
         }),
-        Outbound::HeartBeat {receivingPlayerId} => json!({
+        Outbound::HeartBeat { receivingPlayerId } => json!({
             "type": "se.cygni.snake.api.request.HeartBeatRequest",
             "receivingPlayerId": receivingPlayerId,
         }),
@@ -85,4 +114,3 @@ pub fn render_outbound_message(msg: Outbound) -> String {
         }),
     }).to_string()
 }
-

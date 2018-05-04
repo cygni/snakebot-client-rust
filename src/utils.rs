@@ -1,6 +1,4 @@
-use serde::ser::{Serialize, Serializer};
-use structs::{Map, SnakeInfo};
-use util;
+use types::{Direction, Map, SnakeInfo};
 
 #[derive(PartialEq, Debug)]
 pub enum Tile<'a> {
@@ -24,28 +22,6 @@ pub enum Tile<'a> {
     },
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Direction {
-    Down,
-    Up,
-    Left,
-    Right,
-}
-
-impl Serialize for Direction {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(match *self {
-            Direction::Down => "DOWN",
-            Direction::Up => "UP",
-            Direction::Left => "LEFT",
-            Direction::Right => "RIGHT",
-        })
-    }
-}
-
 impl Direction {
     pub fn as_movement_delta(&self) -> (i32, i32) {
         match *self {
@@ -65,24 +41,18 @@ impl Map {
         inside_x && inside_y
     }
 
-    pub fn get_snake_by_id<'a>(&'a self, id: &String) -> Option<&'a SnakeInfo> {
-        self.snakeInfos.iter().find(|s| &s.id == id)
+    pub fn get_snake_by_id<'a>(&'a self, id: &str) -> Option<&'a SnakeInfo> {
+        self.snake_infos.iter().find(|s| &s.id == id)
     }
 
     pub fn get_tile_at(&self, coordinate: (i32, i32)) -> Tile {
-        let position = util::translate_coordinate(coordinate, self.width);
-        let snake_at_tile = self.snakeInfos
-            .iter()
-            .find(|s| s.positions.contains(&position));
+        let position = translate_coordinate(coordinate, self.width);
+        let snake_at_tile = self.snake_infos.iter().find(|s| s.positions.contains(&position));
 
-        if self.obstaclePositions.contains(&position) {
-            Tile::Obstacle {
-                coordinate: coordinate,
-            }
-        } else if self.foodPositions.contains(&position) {
-            Tile::Food {
-                coordinate: coordinate,
-            }
+        if self.obstacle_positions.contains(&position) {
+            Tile::Obstacle { coordinate: coordinate }
+        } else if self.food_positions.contains(&position) {
+            Tile::Food { coordinate: coordinate }
         } else if snake_at_tile.is_some() {
             let s = snake_at_tile.unwrap();
             if s.positions[0] == position {
@@ -99,9 +69,7 @@ impl Map {
         } else if !self.inside_map(coordinate) {
             Tile::Wall
         } else {
-            Tile::Empty {
-                coordinate: coordinate,
-            }
+            Tile::Empty { coordinate: coordinate }
         }
     }
 
@@ -116,7 +84,7 @@ impl Map {
 
     pub fn can_snake_move_in_direction(&self, snake: &SnakeInfo, direction: Direction) -> bool {
         let (xd, yd) = direction.as_movement_delta();
-        let (x, y) = util::translate_position(snake.positions[0], self.width);
+        let (x, y) = translate_position(snake.positions[0], self.width);
 
         self.is_tile_available_for_movement((x + xd, y + yd))
     }
@@ -128,11 +96,67 @@ impl Map {
     }
 }
 
+#[allow(dead_code)]
+pub fn translate_position(position: i32, map_width: i32) -> (i32, i32) {
+    let pos = position as f64;
+    let width = map_width as f64;
+
+    let y = (pos / width).floor();
+    let x = (pos - y * width).abs();
+
+    (x as i32, y as i32)
+}
+
+#[allow(dead_code)]
+pub fn translate_positions(positions: &Vec<i32>, map_width: i32) -> Vec<(i32, i32)> {
+    positions
+        .into_iter()
+        .map(|pos| translate_position(*pos, map_width))
+        .collect()
+}
+
+#[allow(dead_code)]
+pub fn translate_coordinate(coordinates: (i32, i32), map_width: i32) -> i32 {
+    let (x, y) = coordinates;
+    x + y * map_width
+}
+
+#[allow(dead_code)]
+pub fn get_manhattan_distance(start: (i32, i32), goal: (i32, i32)) -> i32 {
+    let (x1, y1) = start;
+    let (x2, y2) = goal;
+
+    let x = (x1 - x2).abs();
+    let y = (y1 - y2).abs();
+
+    x + y
+}
+
+#[allow(dead_code)]
+pub fn get_euclidian_distance(start: (i32, i32), goal: (i32, i32)) -> f64 {
+    let (x1, y1) = start;
+    let (x2, y2) = goal;
+
+    let x = (x1 - x2).pow(2);
+    let y = (y1 - y2).pow(2);
+    let d = (x + y) as f64;
+
+    d.sqrt().floor()
+}
+
+#[allow(dead_code)]
+pub fn is_within_square(coord: (i32, i32), nw_coord: (i32, i32), se_coord: (i32, i32)) -> bool {
+    let (x, y) = coord;
+    let (nw_x, nw_y) = nw_coord;
+    let (se_x, se_y) = se_coord;
+
+    x >= nw_x && x <= se_x && y >= nw_y && y <= se_y
+}
+
 #[cfg(test)]
 mod test {
-    use maputil::{Direction, Tile};
-    use structs::{Map, SnakeInfo};
-    use util::translate_coordinate;
+    use types::{Map, SnakeInfo};
+    use utils::{translate_coordinate, Direction, Tile};
 
     const MAP_WIDTH: i32 = 3;
 
@@ -140,7 +164,7 @@ mod test {
         SnakeInfo {
             name: String::from("1"),
             points: 0,
-            tailProtectedForGameTicks: 0,
+            tail_protected_for_game_ticks: 0,
             positions: vec![
                 translate_coordinate((1, 1), MAP_WIDTH),
                 translate_coordinate((0, 1), MAP_WIDTH),
@@ -153,7 +177,7 @@ mod test {
         SnakeInfo {
             name: String::from("2"),
             points: 0,
-            tailProtectedForGameTicks: 0,
+            tail_protected_for_game_ticks: 0,
             positions: vec![translate_coordinate((1, 2), MAP_WIDTH)],
             id: String::from("2"),
         }
@@ -168,10 +192,10 @@ mod test {
         Map {
             width: MAP_WIDTH,
             height: MAP_WIDTH,
-            worldTick: 0,
-            snakeInfos: vec![get_snake_one(), get_snake_two()],
-            foodPositions: vec![translate_coordinate((1, 0), MAP_WIDTH)],
-            obstaclePositions: vec![translate_coordinate((2, 1), MAP_WIDTH)],
+            world_tick: 0,
+            snake_infos: vec![get_snake_one(), get_snake_two()],
+            food_positions: vec![translate_coordinate((1, 0), MAP_WIDTH)],
+            obstacle_positions: vec![translate_coordinate((2, 1), MAP_WIDTH)],
         }
     }
 
@@ -248,18 +272,9 @@ mod test {
         let snake = map.get_snake_by_id(id).unwrap();
 
         assert_eq!(true, map.can_snake_move_in_direction(&snake, Direction::Up));
-        assert_eq!(
-            false,
-            map.can_snake_move_in_direction(&snake, Direction::Down)
-        );
-        assert_eq!(
-            false,
-            map.can_snake_move_in_direction(&snake, Direction::Left)
-        );
-        assert_eq!(
-            false,
-            map.can_snake_move_in_direction(&snake, Direction::Right)
-        );
+        assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Down));
+        assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Left));
+        assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Right));
     }
 
     #[test]
@@ -268,9 +283,6 @@ mod test {
         let id = &get_snake_two().id;
         let snake = map.get_snake_by_id(id).unwrap();
 
-        assert_eq!(
-            false,
-            map.can_snake_move_in_direction(&snake, Direction::Down)
-        );
+        assert_eq!(false, map.can_snake_move_in_direction(&snake, Direction::Down));
     }
 }

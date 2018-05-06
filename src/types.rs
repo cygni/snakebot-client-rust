@@ -1,3 +1,5 @@
+pub type Position = i32;
+
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Direction {
@@ -7,17 +9,17 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SnakeInfo {
     pub id: String,
     pub name: String,
     pub points: i32,
-    pub positions: Vec<i32>,
+    pub positions: Vec<Position>,
     pub tail_protected_for_game_ticks: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameResult {
     pub points: i32,
@@ -25,18 +27,18 @@ pub struct GameResult {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Map {
     pub width: i32,
     pub height: i32,
     pub world_tick: u32,
     pub snake_infos: Vec<SnakeInfo>,
-    pub food_positions: Vec<i32>,
-    pub obstacle_positions: Vec<i32>,
+    pub food_positions: Vec<Position>,
+    pub obstacle_positions: Vec<Position>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameSettings {
     pub max_noof_players: u32,
@@ -80,7 +82,7 @@ impl Default for GameSettings {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum InboundMessage {
     #[serde(rename = "se.cygni.snake.api.event.GameEndedEvent", rename_all = "camelCase")]
@@ -159,7 +161,7 @@ pub enum InboundMessage {
     },
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum OutboundMessage<'a> {
     #[serde(rename = "se.cygni.snake.api.request.ClientInfo", rename_all = "camelCase")]

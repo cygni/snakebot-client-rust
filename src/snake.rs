@@ -1,6 +1,7 @@
+use types::InboundMessage;
 use client::Player;
 use types::{Direction, Map};
-use utils::translate_positions;
+use utils::Coordinate;
 use LOG_TARGET;
 
 #[derive(Debug, Clone)]
@@ -21,12 +22,20 @@ impl Player for Snake {
         debug!(
             target: LOG_TARGET,
             "Food can be found at {:?}",
-            translate_positions(&map.food_positions, map.width)
+            map.food_positions
+                .iter()
+                .map(|pos| Coordinate::from_position(*pos, map.width))
+                .collect::<Vec<_>>()
         );
+
         debug!(
             target: LOG_TARGET,
             "My snake positions are {:?}",
-            translate_positions(&snake_info.positions, map.width)
+            snake_info
+                .positions
+                .iter()
+                .map(|pos| Coordinate::from_position(*pos, map.width))
+                .collect::<Vec<_>>()
         );
 
         for &dir in DIRECTIONS.iter() {
@@ -37,6 +46,19 @@ impl Player for Snake {
         }
 
         debug!(target: LOG_TARGET, "Snake cannot but will move down.");
+
         Direction::Down
+    }
+
+    fn on_message(&mut self, message: &InboundMessage) {
+        match *message {
+            InboundMessage::GameStarting { .. } => {
+                // Reset snake state here
+            }
+
+            _ => {
+                // Do nothing
+            }
+        }
     }
 }

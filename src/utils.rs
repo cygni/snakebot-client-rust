@@ -1,185 +1,165 @@
-use types::{Direction, Map, SnakeInfo};
+use std::ops::Add;
+use types::{Direction, Map, Position, SnakeInfo};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Coordinate(i32, i32);
+
+impl Coordinate {
+    pub fn from_position(position: Position, map_width: i32) -> Coordinate {
+        let x = position % map_width;
+        let y = (position - x) / map_width;
+        Coordinate(x, y)
+    }
+
+    pub fn to_position(self, map_width: i32) -> Position {
+        let Coordinate(x, y) = self;
+        x + y * map_width
+    }
+
+    #[allow(dead_code)]
+    pub fn manhattan_distance_to(self, goal: Coordinate) -> i32 {
+        let Coordinate(x0, y0) = self;
+        let Coordinate(x1, y1) = goal;
+        (x0 - x1).abs() + (y0 - y1).abs()
+    }
+
+    #[allow(dead_code)]
+    pub fn euclidian_distance_to(self, goal: Coordinate) -> f64 {
+        let Coordinate(x0, y0) = self;
+        let Coordinate(x1, y1) = goal;
+        (((x0 - x1).pow(2) + (y0 - y1).pow(2)) as f64).sqrt()
+    }
+
+    #[allow(dead_code)]
+    pub fn is_within_square(self, nw_coord: Coordinate, se_coord: Coordinate) -> bool {
+        let Coordinate(x, y) = self;
+        let Coordinate(nw_x, nw_y) = nw_coord;
+        let Coordinate(se_x, se_y) = se_coord;
+        x >= nw_x && x <= se_x && y >= nw_y && y <= se_y
+    }
+}
+
+impl Add for Coordinate {
+    type Output = Coordinate;
+    fn add(self, rhs: Coordinate) -> Coordinate {
+        let Coordinate(x0, y0) = self;
+        let Coordinate(x1, y1) = rhs;
+        Coordinate(x0 + x1, y0 + y1)
+    }
+}
 
 #[derive(PartialEq, Debug)]
 pub enum Tile<'a> {
     Wall,
     Food {
-        coordinate: (i32, i32),
+        coordinate: Coordinate,
     },
     Obstacle {
-        coordinate: (i32, i32),
+        coordinate: Coordinate,
     },
     Empty {
-        coordinate: (i32, i32),
+        coordinate: Coordinate,
     },
     SnakeHead {
-        coordinate: (i32, i32),
+        coordinate: Coordinate,
         snake: &'a SnakeInfo,
     },
     SnakeBody {
-        coordinate: (i32, i32),
+        coordinate: Coordinate,
         snake: &'a SnakeInfo,
     },
 }
 
 impl Direction {
-    pub fn as_movement_delta(&self) -> (i32, i32) {
+    pub fn to_movement_delta(&self) -> Coordinate {
         match *self {
-            Direction::Down => (0, 1),
-            Direction::Up => (0, -1),
-            Direction::Left => (-1, 0),
-            Direction::Right => (1, 0),
+            Direction::Down => Coordinate(0, 1),
+            Direction::Up => Coordinate(0, -1),
+            Direction::Left => Coordinate(-1, 0),
+            Direction::Right => Coordinate(1, 0),
         }
     }
 }
 
 impl Map {
-    pub fn inside_map(&self, coordinate: (i32, i32)) -> bool {
-        let (x, y) = coordinate;
-        let inside_x = x >= 0 && x < self.width;
-        let inside_y = y >= 0 && y < self.height;
-        inside_x && inside_y
+    pub fn inside_map(&self, coordinate: Coordinate) -> bool {
+        let Coordinate(x, y) = coordinate;
+        x >= 0 && x < self.width && y >= 0 && y < self.height
     }
 
     pub fn get_snake_by_id<'a>(&'a self, id: &str) -> Option<&'a SnakeInfo> {
         self.snake_infos.iter().find(|s| &s.id == id)
     }
 
-    pub fn get_tile_at(&self, coordinate: (i32, i32)) -> Tile {
-        let position = translate_coordinate(coordinate, self.width);
-        let snake_at_tile = self.snake_infos.iter().find(|s| s.positions.contains(&position));
+    pub fn get_tile_at(&self, coordinate: Coordinate) -> Tile {
+        let position = coordinate.to_position(self.width);
 
         if self.obstacle_positions.contains(&position) {
-            Tile::Obstacle { coordinate: coordinate }
+            Tile::Obstacle { coordinate }
         } else if self.food_positions.contains(&position) {
-            Tile::Food { coordinate: coordinate }
-        } else if snake_at_tile.is_some() {
-            let s = snake_at_tile.unwrap();
-            if s.positions[0] == position {
-                Tile::SnakeHead {
-                    coordinate: coordinate,
-                    snake: s,
-                }
+            Tile::Food { coordinate }
+        } else if let Some(snake) = self.snake_infos.iter().find(|s| s.positions.contains(&position)) {
+            if position == *snake.positions.first().unwrap() {
+                Tile::SnakeHead { coordinate, snake }
             } else {
-                Tile::SnakeBody {
-                    coordinate: coordinate,
-                    snake: s,
-                }
+                Tile::SnakeBody { coordinate, snake }
             }
         } else if !self.inside_map(coordinate) {
             Tile::Wall
         } else {
-            Tile::Empty { coordinate: coordinate }
+            Tile::Empty { coordinate }
         }
     }
 
-    pub fn is_tile_available_for_movement(&self, coordinate: (i32, i32)) -> bool {
-        let tile = self.get_tile_at(coordinate);
-        match tile {
-            Tile::Empty { coordinate: _ } => true,
-            Tile::Food { coordinate: _ } => true,
+    pub fn is_tile_available_for_movement(&self, coordinate: Coordinate) -> bool {
+        match self.get_tile_at(coordinate) {
+            Tile::Empty { .. } => true,
+            Tile::Food { .. } => true,
             _ => false,
         }
     }
 
     pub fn can_snake_move_in_direction(&self, snake: &SnakeInfo, direction: Direction) -> bool {
-        let (xd, yd) = direction.as_movement_delta();
-        let (x, y) = translate_position(snake.positions[0], self.width);
+        let Coordinate(dx, dy) = direction.to_movement_delta();
+        let Coordinate(x, y) = Coordinate::from_position(*snake.positions.first().unwrap(), self.width);
 
-        self.is_tile_available_for_movement((x + xd, y + yd))
+        self.is_tile_available_for_movement(Coordinate(x + dx, y + dy))
     }
 
     #[allow(dead_code)]
-    pub fn is_coordinate_out_of_bounds(&self, coordinate: (i32, i32)) -> bool {
-        let (x, y) = coordinate;
+    pub fn is_coordinate_out_of_bounds(&self, coordinate: Coordinate) -> bool {
+        let Coordinate(x, y) = coordinate;
         x < 0 || x >= self.width || y < 0 || y >= self.height
     }
-}
-
-#[allow(dead_code)]
-pub fn translate_position(position: i32, map_width: i32) -> (i32, i32) {
-    let pos = position as f64;
-    let width = map_width as f64;
-
-    let y = (pos / width).floor();
-    let x = (pos - y * width).abs();
-
-    (x as i32, y as i32)
-}
-
-#[allow(dead_code)]
-pub fn translate_positions(positions: &Vec<i32>, map_width: i32) -> Vec<(i32, i32)> {
-    positions
-        .into_iter()
-        .map(|pos| translate_position(*pos, map_width))
-        .collect()
-}
-
-#[allow(dead_code)]
-pub fn translate_coordinate(coordinates: (i32, i32), map_width: i32) -> i32 {
-    let (x, y) = coordinates;
-    x + y * map_width
-}
-
-#[allow(dead_code)]
-pub fn get_manhattan_distance(start: (i32, i32), goal: (i32, i32)) -> i32 {
-    let (x1, y1) = start;
-    let (x2, y2) = goal;
-
-    let x = (x1 - x2).abs();
-    let y = (y1 - y2).abs();
-
-    x + y
-}
-
-#[allow(dead_code)]
-pub fn get_euclidian_distance(start: (i32, i32), goal: (i32, i32)) -> f64 {
-    let (x1, y1) = start;
-    let (x2, y2) = goal;
-
-    let x = (x1 - x2).pow(2);
-    let y = (y1 - y2).pow(2);
-    let d = (x + y) as f64;
-
-    d.sqrt().floor()
-}
-
-#[allow(dead_code)]
-pub fn is_within_square(coord: (i32, i32), nw_coord: (i32, i32), se_coord: (i32, i32)) -> bool {
-    let (x, y) = coord;
-    let (nw_x, nw_y) = nw_coord;
-    let (se_x, se_y) = se_coord;
-
-    x >= nw_x && x <= se_x && y >= nw_y && y <= se_y
 }
 
 #[cfg(test)]
 mod test {
     use types::{Map, SnakeInfo};
-    use utils::{translate_coordinate, Direction, Tile};
+    use utils::{Coordinate, Direction, Tile};
 
     const MAP_WIDTH: i32 = 3;
 
     fn get_snake_one() -> SnakeInfo {
         SnakeInfo {
-            name: String::from("1"),
+            name: "1".to_string(),
             points: 0,
             tail_protected_for_game_ticks: 0,
             positions: vec![
-                translate_coordinate((1, 1), MAP_WIDTH),
-                translate_coordinate((0, 1), MAP_WIDTH),
+                Coordinate(1, 1).to_position(MAP_WIDTH),
+                Coordinate(0, 1).to_position(MAP_WIDTH),
             ],
-            id: String::from("1"),
+            id: "1".to_string(),
         }
     }
 
     fn get_snake_two() -> SnakeInfo {
         SnakeInfo {
-            name: String::from("2"),
+            name: "2".to_string(),
             points: 0,
             tail_protected_for_game_ticks: 0,
-            positions: vec![translate_coordinate((1, 2), MAP_WIDTH)],
-            id: String::from("2"),
+            positions: vec![Coordinate(1, 2).to_position(MAP_WIDTH)],
+            id: "2".to_string(),
         }
     }
 
@@ -194,8 +174,8 @@ mod test {
             height: MAP_WIDTH,
             world_tick: 0,
             snake_infos: vec![get_snake_one(), get_snake_two()],
-            food_positions: vec![translate_coordinate((1, 0), MAP_WIDTH)],
-            obstacle_positions: vec![translate_coordinate((2, 1), MAP_WIDTH)],
+            food_positions: vec![Coordinate(1, 0).to_position(MAP_WIDTH)],
+            obstacle_positions: vec![Coordinate(2, 1).to_position(MAP_WIDTH)],
         }
     }
 
@@ -215,33 +195,45 @@ mod test {
         let snake_two = get_snake_two();
         let tiles = vec![
             vec![
-                Tile::Empty { coordinate: (0, 0) },
-                Tile::Food { coordinate: (1, 0) },
-                Tile::Empty { coordinate: (2, 0) },
+                Tile::Empty {
+                    coordinate: Coordinate(0, 0),
+                },
+                Tile::Food {
+                    coordinate: Coordinate(1, 0),
+                },
+                Tile::Empty {
+                    coordinate: Coordinate(2, 0),
+                },
             ],
             vec![
                 Tile::SnakeBody {
-                    coordinate: (0, 1),
+                    coordinate: Coordinate(0, 1),
                     snake: &snake_one,
                 },
                 Tile::SnakeHead {
-                    coordinate: (1, 1),
+                    coordinate: Coordinate(1, 1),
                     snake: &snake_one,
                 },
-                Tile::Obstacle { coordinate: (2, 1) },
+                Tile::Obstacle {
+                    coordinate: Coordinate(2, 1),
+                },
             ],
             vec![
-                Tile::Empty { coordinate: (0, 2) },
+                Tile::Empty {
+                    coordinate: Coordinate(0, 2),
+                },
                 Tile::SnakeHead {
-                    coordinate: (1, 2),
+                    coordinate: Coordinate(1, 2),
                     snake: &snake_two,
                 },
-                Tile::Empty { coordinate: (2, 2) },
+                Tile::Empty {
+                    coordinate: Coordinate(2, 2),
+                },
             ],
         ];
         for y in 0..map.width {
             for x in 0..map.height {
-                assert_eq!(tiles[y as usize][x as usize], map.get_tile_at((x, y)));
+                assert_eq!(tiles[y as usize][x as usize], map.get_tile_at(Coordinate(x, y)));
             }
         }
     }
@@ -259,7 +251,7 @@ mod test {
             for x in 0..map.width {
                 assert_eq!(
                     tiles[y as usize][x as usize],
-                    map.is_tile_available_for_movement((x, y))
+                    map.is_tile_available_for_movement(Coordinate(x, y))
                 );
             }
         }

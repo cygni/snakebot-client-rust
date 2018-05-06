@@ -10,7 +10,25 @@ use LOG_TARGET;
 const HEARTBEAT_TOKEN: ws::util::Token = ws::util::Token(1337);
 const HEARTBEAT_INTERVAL: u64 = 10_000;
 
-pub trait Player: Clone {
+#[derive(Debug)]
+pub enum ClientError {
+  WebSocket(ws::Error),
+  SerdeJson(serde_json::Error),
+}
+
+impl From<ws::Error> for ClientError {
+  fn from(error: ws::Error) -> ClientError {
+    ClientError::WebSocket(error)
+  }
+}
+
+impl From<serde_json::Error> for ClientError {
+  fn from(error: serde_json::Error) -> ClientError {
+    ClientError::SerdeJson(error)
+  }
+}
+
+pub trait Player {
   fn get_next_move(&mut self, map: &Map, player_id: &str) -> Direction;
   fn on_message(&mut self, _: &InboundMessage) {}
 }
@@ -32,12 +50,12 @@ pub struct Client<P: Player> {
 }
 
 impl<P: Player> Client<P> {
-  pub fn connect(player: P, config: Config) -> ws::Result<()> {
+  pub fn connect<F: Fn() -> P>(config: Config, create_player: F) -> ws::Result<()> {
     let connection_url = format!("ws://{}:{}/{}", &config.host, &config.port, &config.venue);
     info!(target: LOG_TARGET, "Connecting to {:?}", connection_url);
 
     ws::connect(connection_url, |ws| Client {
-      player: player.clone(),
+      player: create_player(),
       config: config.clone(),
       ws,
       player_id: None,

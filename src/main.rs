@@ -87,8 +87,7 @@ fn main() {
         log4rs::init_file("../log4rs.toml", Default::default()).unwrap();
     }
 
-    let snake = Snake::new();
     let config = read_config();
 
-    Client::connect(snake, config).unwrap();
+    Client::connect(config, Snake::new).unwrap();
 }

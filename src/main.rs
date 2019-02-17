@@ -1,44 +1,26 @@
-#![allow(deprecated)]
-
-#[macro_use]
-extern crate clap;
-extern crate config;
-#[macro_use]
-extern crate log;
-extern crate log4rs;
-extern crate rustc_version;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate target_info;
-extern crate ws;
-
+#![deny(clippy::all)]
+use crate::{
+    client::{Client, Config},
+    snake::Snake,
+};
+use clap::{app_from_crate, crate_authors, crate_description, crate_name, crate_version, Arg};
+use env_logger::Builder;
+use log::{info, LevelFilter};
+use std::path::Path;
 mod client;
 mod snake;
 mod types;
 mod utils;
 
-use clap::Arg;
-use client::{Client, Config};
-use snake::Snake;
-use std::path::Path;
-
-const LOG_TARGET: &'static str = "client";
-const CONFIG_FILE: &'static str = "snake.conf";
-const DEFAULT_HOST: &'static str = "snake.cygni.se";
-const DEFAULT_PORT: &'static str = "80";
-const DEFAULT_SNAKE_NAME: &'static str = "default-rust-snake-name";
-const DEFAULT_VENUE: &'static str = "training";
+const CONFIG_FILE: &str = "snake.conf";
+const DEFAULT_HOST: &str = "snake.cygni.se";
+const DEFAULT_PORT: &str = "80";
+const DEFAULT_SNAKE_NAME: &str = "default-rust-snake-name";
+const DEFAULT_VENUE: &str = "training";
 
 fn read_config() -> Config {
-    let config_path = Path::new(CONFIG_FILE);
-    info!(
-        target: LOG_TARGET,
-        "Reading config from file at {:?}",
-        config_path.canonicalize()
-    );
-    let matches = app_from_crate!(",\n")
+    info!("Reading config from file at {:?}", Path::new(CONFIG_FILE).canonicalize());
+    let matches = app_from_crate!()
         .arg(
             Arg::with_name("host")
                 .short("h")
@@ -83,11 +65,8 @@ fn read_config() -> Config {
 }
 
 fn main() {
-    if let Err(_) = log4rs::init_file("log4rs.toml", Default::default()) {
-        log4rs::init_file("../log4rs.toml", Default::default()).unwrap();
-    }
+    Builder::from_default_env().filter_module(crate_name!(), LevelFilter::Info).init();
 
     let config = read_config();
-
     Client::connect(config, Snake::new).unwrap();
 }

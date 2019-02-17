@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable",
+      "cargo": {
+        "args": ["run"]
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug tests",
+      "cargo": {
+        "args": ["test", "--no-run"]
+      }
+    }
+  ]
+}

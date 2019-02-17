@@ -1,12 +1,38 @@
+use serde_derive::{Deserialize, Serialize};
+
 pub type Position = i32;
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Debug, PartialEq, Copy, Clone, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Direction {
     Up,
     Down,
     Left,
     Right,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub enum DeathReason {
+    CollisionWithWall,
+    CollisionWithObstacle,
+    CollisionWithSnake,
+    CollisionWithSelf,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum GameMode {
+    Training,
+    Tournament,
+    Highscore,
+    Arena,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub enum PlayerNameInvalidReason {
+    Taken,
+    Empty,
+    InvalidCharacter,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -22,9 +48,19 @@ pub struct SnakeInfo {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameResult {
-    pub points: i32,
-    pub player_id: String,
     pub name: String,
+    pub player_id: String,
+    pub points: i32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerRank {
+    pub player_name: String,
+    pub player_id: String,
+    pub rank: i32,
+    pub points: i32,
+    pub alive: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,75 +125,69 @@ pub enum InboundMessage {
     GameEnded {
         receiving_player_id: String,
         player_winner_id: String,
+        player_winner_name: String,
         game_id: String,
         game_tick: u32,
         map: Map,
     },
 
     #[serde(rename = "se.cygni.snake.api.event.GameLinkEvent", rename_all = "camelCase")]
-    GameLink {
-        receiving_player_id: String,
-        game_id: String,
-        url: String,
-    },
+    GameLink { receiving_player_id: String, game_id: String, url: String },
 
     #[serde(rename = "se.cygni.snake.api.event.GameResultEvent", rename_all = "camelCase")]
-    GameResult {
-        points: i32,
-        player_id: String,
-        name: String,
-    },
+    GameResult { receiving_player_id: String, game_id: String, player_ranks: Vec<PlayerRank> },
 
     #[serde(rename = "se.cygni.snake.api.event.GameStartingEvent", rename_all = "camelCase")]
     GameStarting {
-        game_id: String,
         receiving_player_id: String,
+        game_id: String,
         noof_players: u32,
         width: u32,
         height: u32,
+        game_settings: GameSettings,
     },
 
     #[serde(rename = "se.cygni.snake.api.response.HeartBeatResponse", rename_all = "camelCase")]
     HeartBeatResponse { receiving_player_id: String },
 
     #[serde(rename = "se.cygni.snake.api.exception.InvalidPlayerName", rename_all = "camelCase")]
-    InvalidPlayerName { reason_code: u32 },
+    InvalidPlayerName {
+        receiving_player_id: String,
+        #[serde(rename = "PlayerNameInvalidReason")]
+        reason: PlayerNameInvalidReason,
+    },
 
     #[serde(rename = "se.cygni.snake.api.event.MapUpdateEvent", rename_all = "camelCase")]
-    MapUpdate {
-        game_id: String,
-        game_tick: u32,
-        receiving_player_id: String,
-        map: Map,
-    },
+    MapUpdate { receiving_player_id: String, game_id: String, game_tick: u32, map: Map },
 
     #[serde(rename = "se.cygni.snake.api.response.PlayerRegistered", rename_all = "camelCase")]
     PlayerRegistered {
+        receiving_player_id: String,
         name: String,
         game_id: String,
-        game_mode: String,
-        receiving_player_id: String,
+        game_mode: GameMode,
         game_settings: GameSettings,
     },
 
     #[serde(rename = "se.cygni.snake.api.event.SnakeDeadEvent", rename_all = "camelCase")]
     SnakeDead {
+        receiving_player_id: String,
+        game_id: String,
+        game_tick: u32,
         player_id: String,
         x: u32,
         y: u32,
-        game_id: String,
-        game_tick: u32,
-        death_reason: String,
+        death_reason: DeathReason,
     },
 
     #[serde(rename = "se.cygni.snake.api.event.TournamentEndedEvent", rename_all = "camelCase")]
     TournamentEnded {
+        receiving_player_id: String,
         player_winner_id: String,
         game_id: String,
         game_result: Vec<GameResult>,
         tournament_id: String,
         tournament_name: String,
-        receiving_player_id: String,
     },
 }
 
@@ -177,18 +207,10 @@ pub enum OutboundMessage<'a> {
     HeartBeatRequest { receiving_player_id: &'a str },
 
     #[serde(rename = "se.cygni.snake.api.request.RegisterMove", rename_all = "camelCase")]
-    RegisterMove {
-        direction: Direction,
-        game_tick: u32,
-        game_id: &'a str,
-        receiving_player_id: &'a str,
-    },
+    RegisterMove { direction: Direction, game_tick: u32, game_id: &'a str, receiving_player_id: &'a str },
 
     #[serde(rename = "se.cygni.snake.api.request.RegisterPlayer", rename_all = "camelCase")]
-    RegisterPlayer {
-        player_name: &'a str,
-        game_settings: GameSettings,
-    },
+    RegisterPlayer { player_name: &'a str, game_settings: GameSettings },
 
     #[serde(rename = "se.cygni.snake.api.request.StartGame", rename_all = "camelCase")]
     StartGame,

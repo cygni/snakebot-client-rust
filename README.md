@@ -1,6 +1,6 @@
 # SNAKE CLIENT
 
-[![Build Status](http://jenkins.snake.cygni.se/buildStatus/icon?job=snake client rust)](http://jenkins.snake.cygni.se/job/snake%20client%20rust/)
+[![Build Status](https://travis-ci.org/cygni/snakebot-client-rust.svg?branch=master)](https://travis-ci.org/cygni/snakebot-client-rust)
 
 Do you want the most annoying compiler ever?
 Do you want to constantly think of what is owning what variable?

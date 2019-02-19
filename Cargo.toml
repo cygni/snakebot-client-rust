@@ -1,21 +1,21 @@
 [package]
 name = "snakebot_rust"
-version = "1.2.0"
+version = "1.2.1"
 description = "A snake client in the least friendly language."
-license-file = "LICENSE"
+edition = "2018"
 authors = [
   "Martin Barksten <martin.barksten@cygni.com>", 
   "Max Davidson <max.davidson@cygni.se>",
 ]
 
 [dependencies]
-ws = "^0.7.6"
-serde = "^1.0.43"
-serde_json = "^1.0.17"
-serde_derive = "^1.0.43"
-log = "^0.4.1"
-log4rs = { version = "^0.8.0", features = ["toml_format"] }
-target_info = "^0.1.0"
-rustc_version = "^0.2.2"
-config = "^0.8.0"
-clap = "^2.31.2"
+ws = "0.7.9"
+serde = "1.0.88"
+serde_json = "1.0.38"
+serde_derive = "1.0.88"
+log = "0.4.6"
+target_info = "0.1.0"
+rustc_version = "0.2.3"
+config = "0.9.2"
+clap = "2.32.0"
+env_logger = "0.6.0"

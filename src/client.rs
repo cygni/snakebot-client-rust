@@ -1,11 +1,11 @@
+use crate::types::{Direction, GameMode, InboundMessage, Map, OutboundMessage};
+use clap::crate_version;
+use log::{debug, info};
 use rustc_version::version;
 use serde_json;
 use std::mem;
 use target_info::Target;
-use types::{Direction, InboundMessage, Map, OutboundMessage};
 use ws;
-
-use LOG_TARGET;
 
 const HEARTBEAT_TOKEN: ws::util::Token = ws::util::Token(1337);
 const HEARTBEAT_INTERVAL: u64 = 10_000;
@@ -52,7 +52,7 @@ pub struct Client<P: Player> {
 impl<P: Player> Client<P> {
   pub fn connect<F: Fn() -> P>(config: Config, create_player: F) -> ws::Result<()> {
     let connection_url = format!("ws://{}:{}/{}", &config.host, &config.port, &config.venue);
-    info!(target: LOG_TARGET, "Connecting to {:?}", connection_url);
+    info!("Connecting to {:?}", connection_url);
 
     ws::connect(connection_url, |ws| Client {
       player: create_player(),
@@ -64,7 +64,7 @@ impl<P: Player> Client<P> {
   }
 
   fn send_message(&self, message: OutboundMessage) -> ws::Result<()> {
-    info!(target: LOG_TARGET, "Sending message: {:?}", message);
+    debug!("Sending message: {:?}", message);
     let json_string = serde_json::to_string(&message).map_err(Box::new)?;
     self.ws.send(json_string)
   }
@@ -72,14 +72,14 @@ impl<P: Player> Client<P> {
 
 impl<P: Player> ws::Handler for Client<P> {
   fn on_open(&mut self, _: ws::Handshake) -> ws::Result<()> {
-    debug!(target: LOG_TARGET, "WebSocket opened");
+    info!("WebSocket opened");
 
     self.send_message(OutboundMessage::ClientInfo {
       language: "Rust",
       language_version: &version().unwrap().to_string(),
       operating_system: Target::os(),
       operating_system_version: "???",
-      client_version: option_env!("CARGO_PKG_VERSION").unwrap_or("0.1337"),
+      client_version: crate_version!(),
     })?;
 
     self.send_message(OutboundMessage::RegisterPlayer {
@@ -91,16 +91,11 @@ impl<P: Player> ws::Handler for Client<P> {
   }
 
   fn on_timeout(&mut self, token: ws::util::Token) -> ws::Result<()> {
-    match token {
-      HEARTBEAT_TOKEN => {
-        self.ws.timeout(HEARTBEAT_INTERVAL, HEARTBEAT_TOKEN)?;
-        if let Some(ref player_id) = self.player_id {
-          self.send_message(OutboundMessage::HeartBeatRequest {
-            receiving_player_id: player_id,
-          })?;
-        }
+    if token == HEARTBEAT_TOKEN {
+      self.ws.timeout(HEARTBEAT_INTERVAL, HEARTBEAT_TOKEN)?;
+      if let Some(ref player_id) = self.player_id {
+        self.send_message(OutboundMessage::HeartBeatRequest { receiving_player_id: player_id })?;
       }
-      _ => {}
     }
     Ok(())
   }
@@ -118,12 +113,7 @@ impl<P: Player> ws::Handler for Client<P> {
   }
 
   fn on_close(&mut self, code: ws::CloseCode, reason: &str) {
-    debug!(
-      target: LOG_TARGET,
-      "WebSocket closed with code {:?} and reason: {}",
-      code,
-      reason
-    );
+    info!("WebSocket closed with code {:?} and reason: {}", code, reason);
 
     if let Some(timeout) = self.timeout.take() {
       self.ws.cancel(timeout).unwrap();
@@ -133,19 +123,14 @@ impl<P: Player> ws::Handler for Client<P> {
   fn on_message(&mut self, message: ws::Message) -> ws::Result<()> {
     let text = message.into_text()?;
     let message = serde_json::from_str::<InboundMessage>(&text).map_err(Box::new)?;
-    debug!(target: LOG_TARGET, "Received message: {:?}", message);
+    debug!("Received message: {:?}", message);
 
     self.player.on_message(&message);
 
     match message {
-      InboundMessage::PlayerRegistered {
-        name,
-        game_mode,
-        receiving_player_id,
-        ..
-      } => {
-        info!(target: LOG_TARGET, "Successfully registered player {}", name);
-        if game_mode == "TRAINING" {
+      InboundMessage::PlayerRegistered { name, game_mode, receiving_player_id, .. } => {
+        info!("Successfully registered player {}", name);
+        if game_mode == GameMode::Training {
           self.send_message(OutboundMessage::StartGame)?;
         }
         self.player_id = Some(receiving_player_id);
@@ -153,25 +138,19 @@ impl<P: Player> ws::Handler for Client<P> {
       }
 
       InboundMessage::InvalidPlayerName { .. } => {
-        debug!(target: LOG_TARGET, "Player name invalid.");
+        info!("Player name invalid.");
       }
 
       InboundMessage::GameStarting { .. } => {
-        debug!(target: LOG_TARGET, "All snakes are ready to rock. Game is starting.");
+        info!("All snakes are ready to rock. Game is starting.");
       }
 
       InboundMessage::GameLink { url, .. } => {
-        info!(target: LOG_TARGET, "Watch game at: {}", url);
+        info!("Watch game at: {}", url);
       }
 
-      InboundMessage::MapUpdate {
-        map,
-        game_id,
-        game_tick,
-        receiving_player_id,
-        ..
-      } => {
-        debug!(target: LOG_TARGET, "Game map updated, tick: {}", game_tick);
+      InboundMessage::MapUpdate { map, game_id, game_tick, receiving_player_id, .. } => {
+        debug!("Game map updated, tick: {}", game_tick);
 
         let direction = self.player.get_next_move(&map, &receiving_player_id);
 
@@ -184,22 +163,18 @@ impl<P: Player> ws::Handler for Client<P> {
       }
 
       InboundMessage::SnakeDead { death_reason, .. } => {
-        debug!(target: LOG_TARGET, "The snake died, the reason was: {}", death_reason);
+        debug!("The snake died, the reason was: {:?}", death_reason);
       }
 
       InboundMessage::GameEnded { player_winner_id, .. } => {
-        debug!(target: LOG_TARGET, "Game ended, the winner is: {}", player_winner_id);
+        info!("Game ended, the winner is: {}", player_winner_id);
         if self.config.venue == "training" {
           self.ws.close(ws::CloseCode::Normal)?;
         }
       }
 
       InboundMessage::TournamentEnded { player_winner_id, .. } => {
-        debug!(
-          target: LOG_TARGET,
-          "Tournament ended, the winner is: {}",
-          player_winner_id
-        );
+        info!("Tournament ended, the winner is: {}", player_winner_id);
         self.ws.close(ws::CloseCode::Normal)?;
       }
 
